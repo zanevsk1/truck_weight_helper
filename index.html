@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Список продуктов — Mini App</title>
+  <style>
+    :root{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial;margin:0}
+    body{padding:16px;max-width:720px;margin:0 auto}
+    h1{font-size:1.4rem;margin-bottom:8px}
+    form{display:flex;gap:8px;margin-bottom:12px}
+    input[type=text]{flex:1;padding:10px;border-radius:8px;border:1px solid #ddd}
+    button{padding:10px 12px;border-radius:8px;border:0;background:#007bff;color:#fff}
+    ul{list-style:none;padding:0;margin:0}
+    li{display:flex;align-items:center;justify-content:space-between;padding:10px;border:1px solid #eee;border-radius:8px;margin-bottom:8px}
+    .label{flex:1;margin-right:8px;word-break:break-word}
+    .label.done{text-decoration:line-through;opacity:0.6}
+    .controls{display:flex;gap:6px}
+    .small{padding:6px 8px;font-size:0.9rem}
+    .btn-ghost{background:transparent;border:1px solid #ddd}
+    .hint{font-size:0.85rem;color:#666;margin-top:8px}
+  </style>
+</head>
+<body>
+  <h1>Список продуктов</h1>
+  <form id="addForm">
+    <input id="itemInput" type="text" placeholder="Новая позиция (например: хлеб)" autocomplete="off" required />
+    <button type="submit">Добавить</button>
+  </form>
+  <ul id="list"></ul>
+  <p class="hint">Нажмите на элемент, чтобы вычеркнуть/вернуть; кнопка «Удалить» — для удаления.</p>
+
+  <script>
+    /* Простой одностраничный список с сохранением в localStorage */
+    const STORAGE_KEY = 'tg-miniapp-shopping-list-v1'
+    const listEl = document.getElementById('list')
+    const form = document.getElementById('addForm')
+    const input = document.getElementById('itemInput')
+
+    function load() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
+      } catch (e) { return [] }
+    }
+
+    function save(items) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
+    }
+
+    function render() {
+      const items = load()
+      listEl.innerHTML = ''
+      items.forEach((it, idx) => {
+        const li = document.createElement('li')
+        const label = document.createElement('div')
+        label.className = 'label' + (it.done ? ' done' : '')
+        label.textContent = it.text
+        label.addEventListener('click', () => toggleDone(idx))
+
+        const controls = document.createElement('div')
+        controls.className = 'controls'
+
+        const btnDelete = document.createElement('button')
+        btnDelete.className = 'small btn-ghost'
+        btnDelete.textContent = 'Удалить'
+        btnDelete.addEventListener('click', (e) => { e.stopPropagation(); removeItem(idx) })
+
+        controls.appendChild(btnDelete)
+        li.appendChild(label)
+        li.appendChild(controls)
+        listEl.appendChild(li)
+      })
+    }
+
+    function addItem(text) {
+      const items = load()
+      items.unshift({text: text.trim(), done: false})
+      save(items)
+      render()
+    }
+
+    function removeItem(index) {
+      const items = load()
+      items.splice(index,1)
+      save(items)
+      render()
+    }
+
+    function toggleDone(index) {
+      const items = load()
+      items[index].done = !items[index].done
+      save(items)
+      render()
+    }
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault()
+      const v = input.value
+      if (!v.trim()) return
+      addItem(v)
+      input.value = ''
+      input.focus()
+    })
+
+    // Инициализация Telegram Web App (если запускается внутри Telegram)
+    try {
+      if (window.Telegram && window.Telegram.WebApp) {
+        window.Telegram.WebApp.ready()
+        // Можно обращаться к Telegram.WebApp.MainButton и др. по необходимости
+      }
+    } catch (err) {
+      console.warn('Telegram WebApp SDK not available')
+    }
+
+    // Рендерим при загрузке
+    render()
+  </script>
+</body>
+</html>
