@@ -5,6 +5,47 @@
   <title>Truck Weight Helper</title>
   <script src="telegram-auth.js"></script> <!-- наш JS с проверкой -->
 </head>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    // Проверяем, есть ли доступ к Telegram WebApp API
+    if (window.Telegram?.WebApp) {
+      const tg = window.Telegram.WebApp;
+      tg.expand(); // Разворачиваем на весь экран (для удобства)
+
+      // Проверяем наличие данных пользователя
+      const user = tg.initDataUnsafe?.user;
+
+      if (user && user.username) {
+        // Авторизация успешна
+        document.body.innerHTML = `
+          <div style="text-align:center; margin-top:50px; font-family:sans-serif;">
+            <h2>✅ Добро пожаловать, @${user.username}!</h2>
+            <p>ID пользователя: ${user.id}</p>
+          </div>
+        `;
+        console.log("Авторизованный пользователь:", user);
+      } else {
+        // Нет данных (например, если открыто не из Telegram)
+        document.body.innerHTML = `
+          <div style="text-align:center; margin-top:50px; font-family:sans-serif;">
+            <h2>❌ Открой приложение через Telegram</h2>
+            <p>Telegram не передал данные пользователя.</p>
+          </div>
+        `;
+        console.warn("Нет данных Telegram WebApp. Проверь, что сайт открыт из Telegram.");
+      }
+    } else {
+      // Telegram API недоступен
+      document.body.innerHTML = `
+        <div style="text-align:center; margin-top:50px; font-family:sans-serif;">
+          <h2>❌ Telegram WebApp API недоступен</h2>
+          <p>Открой страницу через Telegram Mini App.</p>
+        </div>
+      `;
+      console.error("Telegram WebApp API не найден.");
+    }
+  });
+</script>
 <body>
   <div id="app">
     <!-- Основной интерфейс -->
