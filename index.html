@@ -1,24 +1,28 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Truck Weight Assistant</title>
+  <title>Truck Weight Helper</title>
   <style>
     :root {
       --primary: #0088cc;
+      --primary-light: #00aaff;
       --bg: #f8f9fa;
       --text: #222;
       --card-bg: #fff;
+      --border: #ccc;
       font-family: "Inter", system-ui, sans-serif;
     }
 
     body {
+      margin: 0;
+      padding: 20px;
       background: var(--bg);
       color: var(--text);
-      padding: 24px;
       max-width: 500px;
-      margin: 0 auto;
+      margin-left: auto;
+      margin-right: auto;
     }
 
     h1 {
@@ -27,39 +31,57 @@
       margin-bottom: 20px;
     }
 
+    .language-select {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+
     form {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 12px;
+    }
+
+    label {
+      font-weight: 500;
     }
 
     input {
       padding: 10px;
       border-radius: 8px;
-      border: 1px solid #ccc;
+      border: 1px solid var(--border);
       font-size: 1rem;
+      width: 100%;
     }
 
     button {
-      padding: 10px;
+      padding: 12px;
       background: var(--primary);
       color: #fff;
       border: none;
       border-radius: 8px;
       cursor: pointer;
       font-weight: 600;
+      font-size: 1rem;
     }
 
     button:hover {
-      background: #0071aa;
+      background: var(--primary-light);
     }
 
     .result {
       margin-top: 20px;
       background: var(--card-bg);
       border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       padding: 16px;
+      display: none;
     }
 
     .result h2 {
@@ -91,31 +113,81 @@
   </style>
 </head>
 <body>
-  <h1>Truck Weight Assistant</h1>
-
-  <form id="weightForm">
-    <label>Truck Weight (lbs):</label>
-    <input type="number" id="truckWeight" placeholder="e.g. 18000" required>
-
-    <label>Trailer Empty Weight (lbs):</label>
-    <input type="number" id="trailerWeight" placeholder="e.g. 12000" required>
-
-    <label>Cargo Weight (lbs):</label>
-    <input type="number" id="cargoWeight" placeholder="e.g. 40000" required>
-
-    <label>Fuel (gallons):</label>
-    <input type="number" id="fuelGallons" placeholder="e.g. 100" required>
-
-    <button type="submit">Calculate</button>
-  </form>
-
-  <div id="result" class="result" style="display:none;"></div>
-
-  <div class="note">
-    Made for Telegram Mini App 🚚
+  <div class="language-select">
+    <select id="langSelect">
+      <option value="ru" selected>RU</option>
+      <option value="en">EN</option>
+    </select>
   </div>
 
+  <h1 id="title">Помощник по весу трака</h1>
+
+  <form id="weightForm">
+    <label id="labelTruck">Вес тягача (lbs):</label>
+    <input type="number" id="truckWeight" placeholder="например 18000" min="0" required>
+
+    <label id="labelTrailer">Вес пустого трейлера (lbs):</label>
+    <input type="number" id="trailerWeight" placeholder="например 12000" min="0" required>
+
+    <label id="labelCargo">Вес груза (lbs):</label>
+    <input type="number" id="cargoWeight" placeholder="например 40000" min="0" required>
+
+    <label id="labelFuel">Топливо (галлоны):</label>
+    <input type="number" id="fuelGallons" placeholder="например 100" min="0" required>
+
+    <button type="submit" id="calcButton">Рассчитать</button>
+  </form>
+
+  <div id="result" class="result"></div>
+
+  <div class="note" id="note">Сделано для Telegram Mini App 🚚</div>
+
   <script>
+    const translations = {
+      ru: {
+        title: "Помощник по весу трака",
+        labelTruck: "Вес тягача (lbs):",
+        labelTrailer: "Вес пустого трейлера (lbs):",
+        labelCargo: "Вес груза (lbs):",
+        labelFuel: "Топливо (галлоны):",
+        calcButton: "Рассчитать",
+        totalWeight: "Общий вес",
+        steerAxle: "Передняя ось",
+        driveAxle: "Ведущие оси",
+        trailerAxle: "Оси трейлера",
+        fuelWeight: "Вес топлива",
+        fuelRemaining: "Остаток топлива (галлоны)",
+        alertSteer: "⚠️ Передняя ось превышена",
+        alertDrive: "⚠️ Ведущие оси превышены",
+        alertTrailer: "⚠️ Оси трейлера превышены",
+        holeMsgForward: "Сдвиньте трейлер вперёд {holes} дырки(ок)",
+        holeMsgBack: "Сдвиньте трейлер назад {holes} дырки(ок)",
+        balanced: "Вес по осям в норме ✅",
+        note: "Сделано для Telegram Mini App 🚚"
+      },
+      en: {
+        title: "Truck Weight Assistant",
+        labelTruck: "Truck Weight (lbs):",
+        labelTrailer: "Trailer Empty Weight (lbs):",
+        labelCargo: "Cargo Weight (lbs):",
+        labelFuel: "Fuel (gallons):",
+        calcButton: "Calculate",
+        totalWeight: "Total Weight",
+        steerAxle: "Steer Axle",
+        driveAxle: "Drive Axle",
+        trailerAxle: "Trailer Axle",
+        fuelWeight: "Fuel Weight",
+        fuelRemaining: "Fuel Remaining (gallons)",
+        alertSteer: "⚠️ Steer axle over limit",
+        alertDrive: "⚠️ Drive axle over limit",
+        alertTrailer: "⚠️ Trailer axle over limit",
+        holeMsgForward: "Move trailer forward {holes} hole(s)",
+        holeMsgBack: "Move trailer back {holes} hole(s)",
+        balanced: "Axle weights look balanced ✅",
+        note: "Made for Telegram Mini App 🚚"
+      }
+    };
+
     const FUEL_WEIGHT_PER_GAL = 6.2;
     const MAX_STEER = 12000;
     const MAX_DRIVE = 34000;
@@ -125,64 +197,80 @@
 
     const form = document.getElementById('weightForm');
     const resultDiv = document.getElementById('result');
+    const langSelect = document.getElementById('langSelect');
+
+    function updateLanguage(lang) {
+      const t = translations[lang];
+      document.getElementById('title').textContent = t.title;
+      document.getElementById('labelTruck').textContent = t.labelTruck;
+      document.getElementById('labelTrailer').textContent = t.labelTrailer;
+      document.getElementById('labelCargo').textContent = t.labelCargo;
+      document.getElementById('labelFuel').textContent = t.labelFuel;
+      document.getElementById('calcButton').textContent = t.calcButton;
+      document.getElementById('note').textContent = t.note;
+    }
+
+    langSelect.addEventListener('change', () => updateLanguage(langSelect.value));
+    updateLanguage('ru');
 
     form.addEventListener('submit', (e) => {
       e.preventDefault();
 
-      const truckWeight = parseFloat(document.getElementById('truckWeight').value);
-      const trailerWeight = parseFloat(document.getElementById('trailerWeight').value);
-      const cargoWeight = parseFloat(document.getElementById('cargoWeight').value);
-      const fuelGallons = parseFloat(document.getElementById('fuelGallons').value);
+      const truckWeight = Math.max(0, parseFloat(document.getElementById('truckWeight').value) || 0);
+      const trailerWeight = Math.max(0, parseFloat(document.getElementById('trailerWeight').value) || 0);
+      const cargoWeight = Math.max(0, parseFloat(document.getElementById('cargoWeight').value) || 0);
+      const fuelGallons = Math.max(0, parseFloat(document.getElementById('fuelGallons').value) || 0);
 
       const fuelWeight = fuelGallons * FUEL_WEIGHT_PER_GAL;
       const totalWeight = truckWeight + trailerWeight + cargoWeight + fuelWeight;
 
-      // Простая модель распределения
-      let steer = 0.15 * totalWeight; // ~15% на переднюю
-      let drive = 0.425 * totalWeight; // ~42.5% на ведущие
-      let trailer = 0.425 * totalWeight; // ~42.5% на трейлер
+      // Распределение веса
+      let steer = 0.15 * totalWeight;
+      let drive = 0.425 * totalWeight;
+      let trailer = 0.425 * totalWeight;
 
-      // Проверяем превышения
+      const t = translations[langSelect.value];
+
       let alertMsg = '';
-      if (steer > MAX_STEER) alertMsg += `⚠️ Steer axle over limit (${steer.toFixed(0)} / ${MAX_STEER})<br>`;
-      if (drive > MAX_DRIVE) alertMsg += `⚠️ Drive axle over limit (${drive.toFixed(0)} / ${MAX_DRIVE})<br>`;
-      if (trailer > MAX_TRAILER) alertMsg += `⚠️ Trailer axle over limit (${trailer.toFixed(0)} / ${MAX_TRAILER})<br>`;
-      if (totalWeight > MAX_TOTAL) alertMsg += `⚠️ Total weight over limit (${totalWeight.toFixed(0)} / ${MAX_TOTAL})<br>`;
+      if (steer > MAX_STEER) alertMsg += `${t.alertSteer} (${steer.toFixed(0)} / ${MAX_STEER})<br>`;
+      if (drive > MAX_DRIVE) alertMsg += `${t.alertDrive} (${drive.toFixed(0)} / ${MAX_DRIVE})<br>`;
+      if (trailer > MAX_TRAILER) alertMsg += `${t.alertTrailer} (${trailer.toFixed(0)} / ${MAX_TRAILER})<br>`;
+      if (totalWeight > MAX_TOTAL) alertMsg += `⚠️ ${t.totalWeight} превышен (${totalWeight.toFixed(0)} / ${MAX_TOTAL})<br>`;
 
       // Подсказка по "дыркам"
-      let moveHoles = 0;
       let holeMsg = '';
       if (drive > MAX_DRIVE && trailer < MAX_TRAILER) {
         const diff = drive - MAX_DRIVE;
-        moveHoles = Math.ceil(diff / WEIGHT_PER_HOLE);
-        holeMsg = `Move trailer <b>back ${moveHoles} hole(s)</b> to shift weight off drive axle.`;
+        const moveHoles = Math.ceil(diff / WEIGHT_PER_HOLE);
+        holeMsg = t.holeMsgBack.replace("{holes}", moveHoles);
       } else if (trailer > MAX_TRAILER && drive < MAX_DRIVE) {
         const diff = trailer - MAX_TRAILER;
-        moveHoles = Math.ceil(diff / WEIGHT_PER_HOLE);
-        holeMsg = `Move trailer <b>forward ${moveHoles} hole(s)</b> to shift weight off trailer axle.`;
+        const moveHoles = Math.ceil(diff / WEIGHT_PER_HOLE);
+        holeMsg = t.holeMsgForward.replace("{holes}", moveHoles);
       } else {
-        holeMsg = 'Axle weights look balanced ✅';
+        holeMsg = t.balanced;
       }
 
-      // Сколько топлива можно долить
-      const remainingWeight = MAX_TOTAL - totalWeight;
+      // Сколько топлива можно ещё долить
+      const remainingWeight = Math.max(0, MAX_TOTAL - totalWeight);
       const remainingGallons = Math.floor(remainingWeight / FUEL_WEIGHT_PER_GAL);
 
       resultDiv.style.display = 'block';
       resultDiv.innerHTML = `
-        <h2>Results</h2>
-        <div class="row"><span>Total Weight:</span><b>${totalWeight.toFixed(0)} lbs</b></div>
-        <div class="row"><span>Steer Axle:</span><b>${steer.toFixed(0)} / ${MAX_STEER}</b></div>
-        <div class="row"><span>Drive Axle:</span><b>${drive.toFixed(0)} / ${MAX_DRIVE}</b></div>
-        <div class="row"><span>Trailer Axle:</span><b>${trailer.toFixed(0)} / ${MAX_TRAILER}</b></div>
-        <div class="row"><span>Fuel Weight:</span><b>${fuelWeight.toFixed(0)} lbs</b></div>
-        <div class="row"><span>Fuel Remaining Capacity:</span><b>${remainingGallons} gallons</b></div>
+        <h2>${t.totalWeight} & Расчёт</h2>
+        <div class="row"><span>${t.totalWeight}:</span><b>${totalWeight.toFixed(0)} lbs</b></div>
+        <div class="row"><span>${t.steerAxle}:</span><b>${steer.toFixed(0)} / ${MAX_STEER}</b></div>
+        <div class="row"><span>${t.driveAxle}:</span><b>${drive.toFixed(0)} / ${MAX_DRIVE}</b></div>
+        <div class="row"><span>${t.trailerAxle}:</span><b>${trailer.toFixed(0)} / ${MAX_TRAILER}</b></div>
+        <div class="row"><span>${t.fuelWeight}:</span><b>${fuelWeight.toFixed(0)} lbs</b></div>
+        <div class="row"><span>${t.fuelRemaining}:</span><b>${remainingGallons}</b></div>
         <div class="note">${holeMsg}</div>
         ${alertMsg ? `<div class="alert">${alertMsg}</div>` : ''}
       `;
+
     });
 
-    // Telegram Mini App Support
+    // Telegram Mini App support
     if (window.Telegram && window.Telegram.WebApp) {
       const tg = window.Telegram.WebApp;
       tg.ready();
