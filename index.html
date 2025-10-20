@@ -1,119 +1,196 @@
-<!doctype html>
-<html lang="ru">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Список продуктов — Mini App</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Truck Weight Assistant</title>
   <style>
-    :root{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial;margin:0}
-    body{padding:16px;max-width:720px;margin:0 auto}
-    h1{font-size:1.4rem;margin-bottom:8px}
-    form{display:flex;gap:8px;margin-bottom:12px}
-    input[type=text]{flex:1;padding:10px;border-radius:8px;border:1px solid #ddd}
-    button{padding:10px 12px;border-radius:8px;border:0;background:#007bff;color:#fff}
-    ul{list-style:none;padding:0;margin:0}
-    li{display:flex;align-items:center;justify-content:space-between;padding:10px;border:1px solid #eee;border-radius:8px;margin-bottom:8px}
-    .label{flex:1;margin-right:8px;word-break:break-word}
-    .label.done{text-decoration:line-through;opacity:0.6}
-    .controls{display:flex;gap:6px}
-    .small{padding:6px 8px;font-size:0.9rem}
-    .btn-ghost{background:transparent;border:1px solid #ddd}
-    .hint{font-size:0.85rem;color:#666;margin-top:8px}
+    :root {
+      --primary: #0088cc;
+      --bg: #f8f9fa;
+      --text: #222;
+      --card-bg: #fff;
+      font-family: "Inter", system-ui, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      padding: 24px;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      text-align: center;
+      color: var(--primary);
+      margin-bottom: 20px;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    input {
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+    }
+
+    button {
+      padding: 10px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    button:hover {
+      background: #0071aa;
+    }
+
+    .result {
+      margin-top: 20px;
+      background: var(--card-bg);
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      padding: 16px;
+    }
+
+    .result h2 {
+      margin-top: 0;
+      color: var(--primary);
+      font-size: 1.2rem;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      margin: 6px 0;
+    }
+
+    .note {
+      text-align: center;
+      color: #555;
+      margin-top: 12px;
+      font-size: 0.9rem;
+    }
+
+    .alert {
+      margin-top: 10px;
+      padding: 10px;
+      background: #ffe9e9;
+      color: #a00;
+      border-radius: 8px;
+    }
   </style>
 </head>
 <body>
-  <h1>Список продуктов</h1>
-  <form id="addForm">
-    <input id="itemInput" type="text" placeholder="Новая позиция (например: хлеб)" autocomplete="off" required />
-    <button type="submit">Добавить</button>
+  <h1>Truck Weight Assistant</h1>
+
+  <form id="weightForm">
+    <label>Truck Weight (lbs):</label>
+    <input type="number" id="truckWeight" placeholder="e.g. 18000" required>
+
+    <label>Trailer Empty Weight (lbs):</label>
+    <input type="number" id="trailerWeight" placeholder="e.g. 12000" required>
+
+    <label>Cargo Weight (lbs):</label>
+    <input type="number" id="cargoWeight" placeholder="e.g. 40000" required>
+
+    <label>Fuel (gallons):</label>
+    <input type="number" id="fuelGallons" placeholder="e.g. 100" required>
+
+    <button type="submit">Calculate</button>
   </form>
-  <ul id="list"></ul>
-  <p class="hint">Нажмите на элемент, чтобы вычеркнуть/вернуть; кнопка «Удалить» — для удаления.</p>
+
+  <div id="result" class="result" style="display:none;"></div>
+
+  <div class="note">
+    Made for Telegram Mini App 🚚
+  </div>
 
   <script>
-    /* Простой одностраничный список с сохранением в localStorage */
-    const STORAGE_KEY = 'tg-miniapp-shopping-list-v1'
-    const listEl = document.getElementById('list')
-    const form = document.getElementById('addForm')
-    const input = document.getElementById('itemInput')
+    const FUEL_WEIGHT_PER_GAL = 6.2;
+    const MAX_STEER = 12000;
+    const MAX_DRIVE = 34000;
+    const MAX_TRAILER = 34000;
+    const MAX_TOTAL = 80000;
+    const WEIGHT_PER_HOLE = 250;
 
-    function load() {
-      try {
-        return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
-      } catch (e) { return [] }
-    }
-
-    function save(items) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
-    }
-
-    function render() {
-      const items = load()
-      listEl.innerHTML = ''
-      items.forEach((it, idx) => {
-        const li = document.createElement('li')
-        const label = document.createElement('div')
-        label.className = 'label' + (it.done ? ' done' : '')
-        label.textContent = it.text
-        label.addEventListener('click', () => toggleDone(idx))
-
-        const controls = document.createElement('div')
-        controls.className = 'controls'
-
-        const btnDelete = document.createElement('button')
-        btnDelete.className = 'small btn-ghost'
-        btnDelete.textContent = 'Удалить'
-        btnDelete.addEventListener('click', (e) => { e.stopPropagation(); removeItem(idx) })
-
-        controls.appendChild(btnDelete)
-        li.appendChild(label)
-        li.appendChild(controls)
-        listEl.appendChild(li)
-      })
-    }
-
-    function addItem(text) {
-      const items = load()
-      items.unshift({text: text.trim(), done: false})
-      save(items)
-      render()
-    }
-
-    function removeItem(index) {
-      const items = load()
-      items.splice(index,1)
-      save(items)
-      render()
-    }
-
-    function toggleDone(index) {
-      const items = load()
-      items[index].done = !items[index].done
-      save(items)
-      render()
-    }
+    const form = document.getElementById('weightForm');
+    const resultDiv = document.getElementById('result');
 
     form.addEventListener('submit', (e) => {
-      e.preventDefault()
-      const v = input.value
-      if (!v.trim()) return
-      addItem(v)
-      input.value = ''
-      input.focus()
-    })
+      e.preventDefault();
 
-    // Инициализация Telegram Web App (если запускается внутри Telegram)
-    try {
-      if (window.Telegram && window.Telegram.WebApp) {
-        window.Telegram.WebApp.ready()
-        // Можно обращаться к Telegram.WebApp.MainButton и др. по необходимости
+      const truckWeight = parseFloat(document.getElementById('truckWeight').value);
+      const trailerWeight = parseFloat(document.getElementById('trailerWeight').value);
+      const cargoWeight = parseFloat(document.getElementById('cargoWeight').value);
+      const fuelGallons = parseFloat(document.getElementById('fuelGallons').value);
+
+      const fuelWeight = fuelGallons * FUEL_WEIGHT_PER_GAL;
+      const totalWeight = truckWeight + trailerWeight + cargoWeight + fuelWeight;
+
+      // Простая модель распределения
+      let steer = 0.15 * totalWeight; // ~15% на переднюю
+      let drive = 0.425 * totalWeight; // ~42.5% на ведущие
+      let trailer = 0.425 * totalWeight; // ~42.5% на трейлер
+
+      // Проверяем превышения
+      let alertMsg = '';
+      if (steer > MAX_STEER) alertMsg += `⚠️ Steer axle over limit (${steer.toFixed(0)} / ${MAX_STEER})<br>`;
+      if (drive > MAX_DRIVE) alertMsg += `⚠️ Drive axle over limit (${drive.toFixed(0)} / ${MAX_DRIVE})<br>`;
+      if (trailer > MAX_TRAILER) alertMsg += `⚠️ Trailer axle over limit (${trailer.toFixed(0)} / ${MAX_TRAILER})<br>`;
+      if (totalWeight > MAX_TOTAL) alertMsg += `⚠️ Total weight over limit (${totalWeight.toFixed(0)} / ${MAX_TOTAL})<br>`;
+
+      // Подсказка по "дыркам"
+      let moveHoles = 0;
+      let holeMsg = '';
+      if (drive > MAX_DRIVE && trailer < MAX_TRAILER) {
+        const diff = drive - MAX_DRIVE;
+        moveHoles = Math.ceil(diff / WEIGHT_PER_HOLE);
+        holeMsg = `Move trailer <b>back ${moveHoles} hole(s)</b> to shift weight off drive axle.`;
+      } else if (trailer > MAX_TRAILER && drive < MAX_DRIVE) {
+        const diff = trailer - MAX_TRAILER;
+        moveHoles = Math.ceil(diff / WEIGHT_PER_HOLE);
+        holeMsg = `Move trailer <b>forward ${moveHoles} hole(s)</b> to shift weight off trailer axle.`;
+      } else {
+        holeMsg = 'Axle weights look balanced ✅';
       }
-    } catch (err) {
-      console.warn('Telegram WebApp SDK not available')
-    }
 
-    // Рендерим при загрузке
-    render()
+      // Сколько топлива можно долить
+      const remainingWeight = MAX_TOTAL - totalWeight;
+      const remainingGallons = Math.floor(remainingWeight / FUEL_WEIGHT_PER_GAL);
+
+      resultDiv.style.display = 'block';
+      resultDiv.innerHTML = `
+        <h2>Results</h2>
+        <div class="row"><span>Total Weight:</span><b>${totalWeight.toFixed(0)} lbs</b></div>
+        <div class="row"><span>Steer Axle:</span><b>${steer.toFixed(0)} / ${MAX_STEER}</b></div>
+        <div class="row"><span>Drive Axle:</span><b>${drive.toFixed(0)} / ${MAX_DRIVE}</b></div>
+        <div class="row"><span>Trailer Axle:</span><b>${trailer.toFixed(0)} / ${MAX_TRAILER}</b></div>
+        <div class="row"><span>Fuel Weight:</span><b>${fuelWeight.toFixed(0)} lbs</b></div>
+        <div class="row"><span>Fuel Remaining Capacity:</span><b>${remainingGallons} gallons</b></div>
+        <div class="note">${holeMsg}</div>
+        ${alertMsg ? `<div class="alert">${alertMsg}</div>` : ''}
+      `;
+    });
+
+    // Telegram Mini App Support
+    if (window.Telegram && window.Telegram.WebApp) {
+      const tg = window.Telegram.WebApp;
+      tg.ready();
+      if (tg.colorScheme === 'dark') {
+        document.body.style.background = '#1e1e1e';
+        document.body.style.color = '#eee';
+      }
+    }
   </script>
 </body>
 </html>
