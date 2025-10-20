@@ -2,62 +2,12 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Truck Weight Helper</title>
-  <script src="telegram-auth.js"></script> <!-- наш JS с проверкой -->
-</head>
-<script>
-  document.addEventListener("DOMContentLoaded", () => {
-    // Проверяем, есть ли доступ к Telegram WebApp API
-    if (window.Telegram?.WebApp) {
-      const tg = window.Telegram.WebApp;
-      tg.expand(); // Разворачиваем на весь экран (для удобства)
-
-      // Проверяем наличие данных пользователя
-      const user = tg.initDataUnsafe?.user;
-
-      if (user && user.username) {
-        // Авторизация успешна
-        document.body.innerHTML = `
-          <div style="text-align:center; margin-top:50px; font-family:sans-serif;">
-            <h2>✅ Добро пожаловать, @${user.username}!</h2>
-            <p>ID пользователя: ${user.id}</p>
-          </div>
-        `;
-        console.log("Авторизованный пользователь:", user);
-      } else {
-        // Нет данных (например, если открыто не из Telegram)
-        document.body.innerHTML = `
-          <div style="text-align:center; margin-top:50px; font-family:sans-serif;">
-            <h2>❌ Открой приложение через Telegram</h2>
-            <p>Telegram не передал данные пользователя.</p>
-          </div>
-        `;
-        console.warn("Нет данных Telegram WebApp. Проверь, что сайт открыт из Telegram.");
-      }
-    } else {
-      // Telegram API недоступен
-      document.body.innerHTML = `
-        <div style="text-align:center; margin-top:50px; font-family:sans-serif;">
-          <h2>❌ Telegram WebApp API недоступен</h2>
-          <p>Открой страницу через Telegram Mini App.</p>
-        </div>
-      `;
-      console.error("Telegram WebApp API не найден.");
-    }
-  });
-</script>
-<body>
-  <div id="app">
-    <!-- Основной интерфейс -->
-  </div>
-</body>
-</html>
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Truck Weight Helper</title>
+
+  <!-- ✅ Подключаем Telegram WebApp SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
   <style>
     :root {
       --primary: #0088cc;
@@ -196,6 +146,7 @@
 
   <div class="note" id="note">Сделано для Telegram Mini App 🚚</div>
 
+  <!-- Основная логика приложения -->
   <script>
     const translations = {
       ru: {
@@ -270,42 +221,37 @@
     form.addEventListener('submit', (e) => {
       e.preventDefault();
 
-      const truckWeight = Math.max(0, parseFloat(document.getElementById('truckWeight').value) || 0);
-      const trailerWeight = Math.max(0, parseFloat(document.getElementById('trailerWeight').value) || 0);
-      const cargoWeight = Math.max(0, parseFloat(document.getElementById('cargoWeight').value) || 0);
-      const fuelGallons = Math.max(0, parseFloat(document.getElementById('fuelGallons').value) || 0);
+      const truckWeight = parseFloat(document.getElementById('truckWeight').value) || 0;
+      const trailerWeight = parseFloat(document.getElementById('trailerWeight').value) || 0;
+      const cargoWeight = parseFloat(document.getElementById('cargoWeight').value) || 0;
+      const fuelGallons = parseFloat(document.getElementById('fuelGallons').value) || 0;
 
       const fuelWeight = fuelGallons * FUEL_WEIGHT_PER_GAL;
       const totalWeight = truckWeight + trailerWeight + cargoWeight + fuelWeight;
 
-      // Распределение веса
       let steer = 0.15 * totalWeight;
       let drive = 0.425 * totalWeight;
       let trailer = 0.425 * totalWeight;
 
       const t = translations[langSelect.value];
-
       let alertMsg = '';
+
       if (steer > MAX_STEER) alertMsg += `${t.alertSteer} (${steer.toFixed(0)} / ${MAX_STEER})<br>`;
       if (drive > MAX_DRIVE) alertMsg += `${t.alertDrive} (${drive.toFixed(0)} / ${MAX_DRIVE})<br>`;
       if (trailer > MAX_TRAILER) alertMsg += `${t.alertTrailer} (${trailer.toFixed(0)} / ${MAX_TRAILER})<br>`;
       if (totalWeight > MAX_TOTAL) alertMsg += `⚠️ ${t.totalWeight} превышен (${totalWeight.toFixed(0)} / ${MAX_TOTAL})<br>`;
 
-      // Подсказка по "дыркам"
       let holeMsg = '';
       if (drive > MAX_DRIVE && trailer < MAX_TRAILER) {
-        const diff = drive - MAX_DRIVE;
-        const moveHoles = Math.ceil(diff / WEIGHT_PER_HOLE);
+        const moveHoles = Math.ceil((drive - MAX_DRIVE) / WEIGHT_PER_HOLE);
         holeMsg = t.holeMsgBack.replace("{holes}", moveHoles);
       } else if (trailer > MAX_TRAILER && drive < MAX_DRIVE) {
-        const diff = trailer - MAX_TRAILER;
-        const moveHoles = Math.ceil(diff / WEIGHT_PER_HOLE);
+        const moveHoles = Math.ceil((trailer - MAX_TRAILER) / WEIGHT_PER_HOLE);
         holeMsg = t.holeMsgForward.replace("{holes}", moveHoles);
       } else {
         holeMsg = t.balanced;
       }
 
-      // Сколько топлива можно ещё долить
       const remainingWeight = Math.max(0, MAX_TOTAL - totalWeight);
       const remainingGallons = Math.floor(remainingWeight / FUEL_WEIGHT_PER_GAL);
 
@@ -321,18 +267,25 @@
         <div class="note">${holeMsg}</div>
         ${alertMsg ? `<div class="alert">${alertMsg}</div>` : ''}
       `;
-
     });
 
-    // Telegram Mini App support
-    if (window.Telegram && window.Telegram.WebApp) {
-      const tg = window.Telegram.WebApp;
-      tg.ready();
-      if (tg.colorScheme === 'dark') {
-        document.body.style.background = '#1e1e1e';
-        document.body.style.color = '#eee';
+    // ✅ Проверка Telegram авторизации
+    window.addEventListener("load", () => {
+      if (window.Telegram?.WebApp) {
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+
+        const user = tg.initDataUnsafe?.user;
+        if (user?.username) {
+          console.log("✅ Telegram авторизация успешна:", user);
+        } else {
+          alert("⚠️ Открой приложение через Telegram Mini App, чтобы пройти авторизацию.");
+        }
+      } else {
+        alert("❌ Telegram WebApp API недоступен. Открой через Telegram.");
       }
-    }
+    });
   </script>
 </body>
 </html>
